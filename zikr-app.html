@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>জিকির কাউন্টার</title>
+<style>
+:root{--bg:#f4faf6;--card:#fff;--text:#12301f;--muted:#5b7466;--accent:#059669;--accent2:#047857;--line:#d5e6dc;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1a14;--card:#16261d;--text:#e6f3ea;--muted:#93ad9d;--accent:#10b981;--accent2:#34d399;--line:#254334;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1a14;--card:#16261d;--text:#e6f3ea;--muted:#93ad9d;--accent:#10b981;--accent2:#34d399;--line:#254334;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans Bengali","Kalpurush",system-ui,sans-serif;line-height:1.6}
+main{max-width:480px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 14px;text-align:center}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.ar{font-family:"Amiri","Noto Naskh Arabic","Scheherazade New",serif;font-size:30px;text-align:center;line-height:1.8;direction:rtl}
+.bn{text-align:center;color:var(--muted);margin-top:-4px}
+.tag{font-size:13px;color:var(--accent);font-weight:600;margin-bottom:4px}
+select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;margin-bottom:10px}
+.count{font-size:56px;font-weight:700;text-align:center;color:var(--accent)}
+.sub{text-align:center;color:var(--muted);font-size:14px}
+#tap{display:block;width:170px;height:170px;margin:14px auto;border-radius:50%;border:0;background:var(--accent);color:#fff;font:600 20px inherit;font-family:inherit;box-shadow:0 6px 0 var(--accent2);cursor:pointer;-webkit-tap-highlight-color:transparent}
+#tap:active{transform:translateY(4px);box-shadow:0 2px 0 var(--accent2)}
+.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.chip{padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;cursor:pointer}
+.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .15s}
+.row{display:flex;justify-content:space-around;text-align:center}
+.row b{display:block;font-size:22px}
+.reset{display:block;margin:10px auto 0;background:none;border:0;color:var(--muted);text-decoration:underline;font:inherit;cursor:pointer}
+.note{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+.body{margin-top:8px;white-space:pre-line}
+.src{font-size:12px;color:var(--muted);margin:6px 0;text-align:center}
+</style>
+</head>
+<body>
+<main>
+<h1>জিকির কাউন্টার</h1>
+
+<div class="card">
+<div class="tag" id="dTag">আজকের আমল</div>
+<div class="ar" id="dAr"></div>
+<div class="bn" id="dBn"></div>
+<div class="body" id="dBody"></div>
+<div class="src" id="dSrc"></div>
+<div class="sub" id="dTip"></div>
+</div>
+
+<div class="card">
+<select id="sel" aria-label="জিকির বেছে নিন"></select>
+<div class="ar" id="ar"></div>
+<div class="count" id="cnt">০</div>
+<div class="sub" id="tgtTxt"></div>
+<div class="bar"><i id="bar"></i></div>
+<button id="tap">পড়লাম</button>
+<div class="chips" id="chips"></div>
+<button class="reset" id="rst">এই গণনা শূন্য করুন</button>
+</div>
+
+<div class="card row">
+<div><b id="today">০</b><span class="sub">আজ মোট</span></div>
+<div><b id="all">০</b><span class="sub">সর্বমোট</span></div>
+</div>
+
+<div class="note">গণনা শুধু আপনার ফোনের ব্রাউজারে সেভ থাকে। আমলের লেখা ব্যবহারের আগে নির্ভরযোগ্য উৎস বা আলেমের কাছ থেকে মিলিয়ে নিন।</div>
+</main>
+<script>
+var DH=[
+{id:'sub',ar:'سُبْحَانَ اللّٰهِ',bn:'সুবহানাল্লাহ'},
+{id:'alh',ar:'اَلْحَمْدُ لِلّٰهِ',bn:'আলহামদুলিল্লাহ'},
+{id:'akb',ar:'اَللّٰهُ أَكْبَرُ',bn:'আল্লাহু আকবার'},
+{id:'tah',ar:'لَا إِلٰهَ إِلَّا اللّٰهُ',bn:'লা ইলাহা ইল্লাল্লাহ'},
+{id:'ist',ar:'أَسْتَغْفِرُ اللّٰهَ',bn:'আস্তাগফিরুল্লাহ'},
+{id:'dur',ar:'اَللّٰهُمَّ صَلِّ عَلَىٰ مُحَمَّدٍ',bn:'আল্লাহুম্মা সাল্লি ’আলা মুহাম্মাদ'},
+{id:'haw',ar:'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللّٰهِ',bn:'লা হাওলা ওয়ালা কুওয়াতা ইল্লা বিল্লাহ'}
+];
+var TIPS=['আজ অন্তত ৩৩ বার পড়ার চেষ্টা করুন।','কাজের ফাঁকে একটু থেমে পড়ুন।','আজ ১০০ বার পড়ার লক্ষ্য রাখতে পারেন।'];
+var TARGETS=[33,99,100,0];
+var S={cur:'sub',tgt:33,total:{},days:{},run:{}};
+function load(){try{var r=localStorage.getItem('zikr-v1');if(r){var o=JSON.parse(r);for(var k in o)S[k]=o[k];}}catch(e){}}
+function save(){try{localStorage.setItem('zikr-v1',JSON.stringify(S));}catch(e){}}
+function bn(n){return String(n).replace(/\d/g,function(d){return '০১২৩৪৫৬৭৮৯'[d];});}
+function key(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function find(id){return DH.filter(function(x){return x.id===id;})[0]||DH[0];}
+function $(i){return document.getElementById(i);}
+function render(){
+var d=find(S.cur),n=S.run[S.cur]||0;
+$('ar').textContent=d.ar;
+$('cnt').textContent=bn(n);
+$('tgtTxt').textContent=S.tgt?('লক্ষ্য: '+bn(S.tgt)):'লক্ষ্য ছাড়া';
+$('bar').style.width=S.tgt?Math.min(100,n/S.tgt*100)+'%':'0%';
+$('today').textContent=bn(S.days[key()]||0);
+var t=0;for(var k in S.total)t+=S.total[k];
+$('all').textContent=bn(t);
+var cs=document.querySelectorAll('.chip');
+for(var i=0;i<cs.length;i++)cs[i].className='chip'+(+cs[i].dataset.t===S.tgt?' on':'');
+}
+function iso(){var d=new Date(),m=d.getMonth()+1,e=d.getDate();return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(e<10?'0':'')+e;}
+var TYPES={dhikr:'আজকের জিকির',dua:'আজকের দোয়া',story:'দোয়া কবুলের গল্প',reminder:'আজকের স্মরণ'};
+function show(x,tip){$('dTag').textContent=TYPES[x.type]||'আজকের আমল';$('dAr').textContent=x.ar||'';$('dBn').textContent=x.bn||'';$('dBody').textContent=x.body||'';$('dSrc').textContent=x.src?('উৎস: '+x.src):'';$('dTip').textContent=tip||'';}
+function daily(items){
+var t=iso(),pick=null;
+if(items&&items.length){
+for(var i=0;i<items.length;i++){if(items[i].date===t){pick=items[i];break;}}
+if(!pick){var past=items.filter(function(z){return z.date<t;}).sort(function(a,b){return a.date<b.date?1:-1;});pick=past[0]||null;}
+}
+if(pick){show(pick,pick.tip);return;}
+var d=new Date(),day=Math.floor(d.getTime()/86400000-d.getTimezoneOffset()/1440);
+show(DH[day%DH.length],TIPS[day%TIPS.length]);
+}
+function getAmol(){
+var cached=null;
+try{var c=localStorage.getItem('amol-cache');if(c)cached=JSON.parse(c);}catch(e){}
+daily(cached);
+try{
+fetch('amol.json?v='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(j){
+if(j&&j.items){try{localStorage.setItem('amol-cache',JSON.stringify(j.items));}catch(e){}daily(j.items);}
+}).catch(function(){});
+}catch(e){}
+}
+load();
+var sel=$('sel');
+DH.forEach(function(x){var o=document.createElement('option');o.value=x.id;o.textContent=x.bn;sel.appendChild(o);});
+sel.value=S.cur;
+var ch=$('chips');
+TARGETS.forEach(function(t){var b=document.createElement('button');b.className='chip';b.dataset.t=t;b.textContent=t?bn(t):'অসীম';b.onclick=function(){S.tgt=t;save();render();};ch.appendChild(b);});
+sel.onchange=function(){S.cur=sel.value;save();render();};
+$('tap').onclick=function(){
+S.run[S.cur]=(S.run[S.cur]||0)+1;
+S.total[S.cur]=(S.total[S.cur]||0)+1;
+var k=key();S.days[k]=(S.days[k]||0)+1;
+if(S.tgt&&S.run[S.cur]===S.tgt){try{navigator.vibrate&&navigator.vibrate(200);}catch(e){}}
+save();render();
+};
+$('rst').onclick=function(){S.run[S.cur]=0;save();render();};
+getAmol();render();
+</script>
+</body>
+</html>

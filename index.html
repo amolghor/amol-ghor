@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>আমল ঘর</title>
+<style>
+:root{--bg:#f4faf6;--card:#fff;--text:#12301f;--muted:#5b7466;--accent:#059669;--line:#d5e6dc;--err:#b91c1c;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1a14;--card:#16261d;--text:#e6f3ea;--muted:#93ad9d;--accent:#10b981;--line:#254334;--err:#f87171}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans Bengali","Kalpurush",system-ui,sans-serif;line-height:1.6}
+main{max-width:480px;margin:0 auto;padding:20px 16px}
+h1{text-align:center;font-size:26px;margin:12px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit}
+button{font:inherit;cursor:pointer}
+.btn{width:100%;padding:12px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-weight:600;margin-top:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.link{display:block;text-align:center;margin-top:14px;color:var(--muted)}
+.av{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:6px}
+.av button{font-size:26px;padding:6px;border-radius:12px;border:2px solid var(--line);background:var(--bg)}
+.av button.on{border-color:var(--accent)}
+.msg{font-size:13px;min-height:20px;margin-top:4px}
+.err{color:var(--err)}.ok{color:var(--accent)}
+.me{text-align:center}.big{font-size:60px}
+.sub{color:var(--muted);font-size:14px;text-align:center}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<h1>আমল ঘর</h1>
+
+<section id="loading"><p class="sub">অপেক্ষা করুন...</p></section>
+
+<section id="login" hidden>
+<div class="card">
+<p class="sub">নিজের নাম ও ইউজারনেম নিয়ে আমল ঘরে যুক্ত হন।</p>
+<button class="btn" id="gbtn">Google দিয়ে সংযুক্ত হন</button>
+<div class="msg err" id="lerr"></div>
+</div>
+<a class="link" href="zikr-app.html">লগইন ছাড়া জিকির কাউন্টার ব্যবহার করুন</a>
+</section>
+
+<section id="setup" hidden>
+<div class="card">
+<label for="nm">আপনার নাম</label>
+<input id="nm" maxlength="40" autocomplete="off">
+<label for="un">ইউজারনেম (অন্যরা এটা দিয়ে আপনাকে খুঁজবে)</label>
+<input id="un" maxlength="20" autocomplete="off" autocapitalize="none" spellcheck="false">
+<div class="msg" id="umsg"></div>
+<label>একটি অবতার বেছে নিন</label>
+<div class="av" id="av"></div>
+<button class="btn" id="sv" disabled>সংরক্ষণ করুন</button>
+</div>
+</section>
+
+<section id="home" hidden>
+<div class="card me">
+<div class="big" id="hav"></div>
+<h2 id="hnm"></h2>
+<div class="sub" id="hun"></div>
+</div>
+<div class="card"><p class="sub">অফিসিয়াল গ্রুপ ও চ্যানেল শীঘ্রই আসছে।</p></div>
+<button class="btn" id="out" style="background:none;color:var(--muted);text-decoration:underline">সাইন আউট</button>
+</section>
+</main>
+
+<script type="module">
+import {firebaseConfig} from './firebase-config.js';
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {getFirestore,doc,getDoc,writeBatch,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const $=id=>document.getElementById(id);
+const show=id=>['loading','login','setup','home'].forEach(s=>{$(s).hidden=s!==id});
+const AV=['🌙','🕌','📿','🌿','⭐','📖','🤲','🌸','🕊️','🌴','☀️','🍃'];
+const RX=/^[a-z][a-z0-9_]{2,19}$/;
+let av=AV[0],user=null,okName=false,timer;
+
+function mark(){[...$('av').children].forEach(b=>b.classList.toggle('on',b.textContent===av))}
+AV.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a;b.onclick=()=>{av=a;mark()};$('av').appendChild(b)});
+mark();
+
+function say(m,c){$('umsg').textContent=m;$('umsg').className='msg '+c}
+function render(d){$('hav').textContent=d.avatar;$('hnm').textContent=d.name;$('hun').textContent='@'+d.username}
+
+$('gbtn').onclick=async()=>{
+  $('lerr').textContent='';
+  try{await signInWithPopup(auth,new GoogleAuthProvider())}
+  catch(e){console.error(e);$('lerr').textContent='লগইন হয়নি। আবার চেষ্টা করুন।'}
+};
+$('out').onclick=()=>signOut(auth);
+
+onAuthStateChanged(auth,async u=>{
+  user=u;
+  if(!u){show('login');return}
+  show('loading');
+  try{
+    const s=await getDoc(doc(db,'users',u.uid));
+    if(s.exists()){render(s.data());show('home')}
+    else{$('nm').value=u.displayName||'';show('setup')}
+  }catch(e){
+    console.error(e);
+    alert('তথ্য আনা যায়নি। নেট, কনফিগ ও Firestore-এর নিয়ম দেখুন।');
+    show('login');
+  }
+});
+
+$('un').oninput=()=>{
+  okName=false;$('sv').disabled=true;
+  const v=$('un').value.trim().toLowerCase();
+  clearTimeout(timer);
+  if(!RX.test(v)){say('ইংরেজি ছোট হাতের অক্ষর, সংখ্যা ও _ দিয়ে ৩-২০ অক্ষর, শুরুতে অক্ষর থাকতে হবে।','');return}
+  say('খুঁজছি...','');
+  timer=setTimeout(async()=>{
+    try{
+      const s=await getDoc(doc(db,'usernames',v));
+      if(v!==$('un').value.trim().toLowerCase())return;
+      if(s.exists())say('এই নামটি আগেই নেওয়া হয়েছে।','err');
+      else{okName=true;say('নামটি পাওয়া যাবে।','ok');$('sv').disabled=false}
+    }catch(e){console.error(e);say('যাচাই করা যায়নি।','err')}
+  },400);
+};
+
+$('sv').onclick=async()=>{
+  const name=$('nm').value.trim(),un=$('un').value.trim().toLowerCase();
+  if(!name||!okName||!user)return;
+  $('sv').disabled=true;
+  try{
+    const b=writeBatch(db);
+    b.set(doc(db,'usernames',un),{uid:user.uid});
+    b.set(doc(db,'users',user.uid),{name:name,username:un,avatar:av,createdAt:serverTimestamp()});
+    await b.commit();
+    render({name:name,username:un,avatar:av});show('home');
+  }catch(e){
+    console.error(e);
+    say('সংরক্ষণ হয়নি। নামটি অন্য কেউ নিয়ে থাকতে পারে, আবার চেষ্টা করুন।','err');
+    $('sv').disabled=false;
+  }
+};
+</script>
+</body>
+</html>
